@@ -19,11 +19,14 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
 from datetime import datetime
+from dotenv import load_dotenv
 # import requests
 
+load_dotenv()
+
 MAX_FILENAME_WORD_LENGTH = 7
-DOWNLOADS_DIR = os.path.expanduser('~/Downloads')
-ICLOUD_DIR = os.path.expanduser('/Users/kameron/Library/Mobile Documents/com~apple~CloudDocs/scanned_docs')
+DOWNLOADS_DIR = os.path.expanduser(os.getenv('DOWNLOADS_DIR'))
+ICLOUD_DIR = os.path.expanduser(os.getenv('ICLOUD_DIR'))
 # PROMPT = "Based on the content provided, generate a descriptive filename that succinctly captures the essence of the content. The filename should not include any dates. Do not include any other text in your output, only the text of the filename'. Content: "
 PROMPT = """
         You will be provided with the contents of a scanned pdf and you will generate a descriptive filename for the content.
