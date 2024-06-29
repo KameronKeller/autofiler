@@ -3,15 +3,15 @@ import Vision
 import PDFKit
 import AppKit
 
-func extractTextFromPDF(at filePath: String) {
+func extractTextFromPDF(at filePath: String) -> String {
     let pdfURL = URL(fileURLWithPath: filePath)
     guard let pdfDocument = PDFDocument(url: pdfURL) else {
         print("Could not load PDF document")
-        return
+        return ""
     }
 
     let pageCount = pdfDocument.pageCount
-    let visionRequests = [VNRecognizeTextRequest(completionHandler: recognizeTextHandler)]
+    var allText = "" // Variable to accumulate all recognized text
 
     for pageIndex in 0..<pageCount {
         guard let page = pdfDocument.page(at: pageIndex),
@@ -21,12 +21,30 @@ func extractTextFromPDF(at filePath: String) {
         }
 
         let requestHandler = VNImageRequestHandler(cgImage: cgPageImage, options: [:])
+        let recognizeTextRequest = VNRecognizeTextRequest { (request, error) in
+            if let error = error {
+                print("Error recognizing text: \(error.localizedDescription)")
+                return
+            }
+            guard let observations = request.results as? [VNRecognizedTextObservation] else {
+                return
+            }
+
+            for observation in observations {
+                if let topCandidate = observation.topCandidates(1).first {
+                    allText += topCandidate.string + " " // Append recognized text
+                }
+            }
+        }
+
         do {
-            try requestHandler.perform(visionRequests)
+            try requestHandler.perform([recognizeTextRequest])
         } catch {
             print("Failed to perform vision request: \(error.localizedDescription)")
         }
     }
+
+    return allText
 }
 
 func pageToImage(page: PDFPage) -> NSImage? {
@@ -40,22 +58,11 @@ func pageToImage(page: PDFPage) -> NSImage? {
     return img
 }
 
-func recognizeTextHandler(request: VNRequest, error: Error?) {
-    if let error = error {
-        print("Error recognizing text: \(error.localizedDescription)")
-        return
-    }
-    guard let observations = request.results as? [VNRecognizedTextObservation] else {
-        return
-    }
-
-    for observation in observations {
-        if let topCandidate = observation.topCandidates(1).first {
-            print("Recognized text: \(topCandidate.string)")
-        }
-    }
+// Usage
+if CommandLine.arguments.count < 2 {
+    print("Please provide a file path")
+} else {
+    let filePath = CommandLine.arguments[1]
+    let extractedText = extractTextFromPDF(at: filePath)
+    print(extractedText)
 }
-
-// Call the function
-let filePath = CommandLine.arguments[1]
-extractTextFromPDF(at: filePath)
