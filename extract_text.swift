@@ -11,11 +11,11 @@ func extractTextFromPDF(at filePath: String) -> String {
     }
 
     let pageCount = pdfDocument.pageCount
-    var allText = "" // Variable to accumulate all recognized text
+    var allText = ""
 
     for pageIndex in 0..<pageCount {
         guard let page = pdfDocument.page(at: pageIndex),
-              let pageImage = pageToImage(page: page),
+              let pageImage = pageToImage(page: page, resolution: 300), // Increase resolution
               let cgPageImage = pageImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             continue
         }
@@ -32,10 +32,12 @@ func extractTextFromPDF(at filePath: String) -> String {
 
             for observation in observations {
                 if let topCandidate = observation.topCandidates(1).first {
-                    allText += topCandidate.string + " " // Append recognized text
+                    allText += topCandidate.string + " "
                 }
             }
         }
+        recognizeTextRequest.recognitionLevel = .accurate // Set recognition level to accurate
+        recognizeTextRequest.usesLanguageCorrection = true // Enable language correction
 
         do {
             try requestHandler.perform([recognizeTextRequest])
@@ -47,13 +49,18 @@ func extractTextFromPDF(at filePath: String) -> String {
     return allText
 }
 
-func pageToImage(page: PDFPage) -> NSImage? {
+func pageToImage(page: PDFPage, resolution: CGFloat) -> NSImage? {
     let pageRect = page.bounds(for: .mediaBox)
-    let img = NSImage(size: pageRect.size)
+    let scale = resolution / 72.0 // Default PDF resolution is 72 DPI
+    let scaledSize = NSSize(width: pageRect.width * scale, height: pageRect.height * scale)
+    let img = NSImage(size: scaledSize)
     img.lockFocus()
     NSColor.white.set()
     pageRect.fill()
-    page.draw(with: .mediaBox, to: NSGraphicsContext.current!.cgContext)
+    if let context = NSGraphicsContext.current?.cgContext {
+        context.scaleBy(x: scale, y: scale)
+        page.draw(with: .mediaBox, to: context)
+    }
     img.unlockFocus()
     return img
 }
